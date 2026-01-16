@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:control_empl/blocs/appartement_form_bloc.dart';
+import 'package:control_empl/blocs/employe_form_bloc.dart';
 import 'package:control_empl/blocs/login_form_bloc.dart';
 import 'package:control_empl/repository/auth_repository.dart';
 import 'package:control_empl/router/app_router.dart';
@@ -68,6 +69,9 @@ class CleanApp extends ConsumerWidget {
               BlocProvider<AppartementFormBloc>(
                   create: (BuildContext context) =>
                       AppartementFormBloc()),
+              BlocProvider<EmployeFormBloc>(
+                  create: (BuildContext context) =>
+                      EmployeFormBloc()),
             ],
             child: ref.watch(repositoryInitializerProvider).when(
                 error: (error, _) => Container(),

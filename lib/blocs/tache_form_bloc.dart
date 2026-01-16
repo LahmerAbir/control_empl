@@ -1,19 +1,20 @@
+import 'package:control_empl/model/appartement.dart';
+import 'package:control_empl/model/employe.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_bloc/flutter_form_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../repository/building_repository.dart';
+import '../repository/employe_repository.dart';
 import '../utils/utils.dart';
 
 class TacheFormBloc extends FormBloc<String, String> {
-  final employe = SelectFieldBloc<String, dynamic>(
-    validators: [Utils.required],
-    items: ['Ameli', 'John', 'Maria'],
+  final employe = SelectFieldBloc<Employe, dynamic>(  validators: [FieldBlocValidators.required],
+
   );
 
-  final appartement = SelectFieldBloc<String, dynamic>(
-    validators: [Utils.required],
-    items: ['109', '100', '50'],
-  );
+  final appartement = SelectFieldBloc<Appartement, dynamic>(
+      validators: [FieldBlocValidators.required]  );
 
   final date = InputFieldBloc<DateTime?, dynamic>(
     validators: [(value) => value == null ? 'Veuillez sélectionner une date.' : null],
@@ -43,25 +44,86 @@ class TacheFormBloc extends FormBloc<String, String> {
         note,
       ],
     );
-  }
+    _loadUsers();
+    _loadApp();
 
+  }
+  Future<void> _loadUsers() async {
+    try {
+      emitLoading();
+      final list = await  await EmployeRepository().getUsers();
+
+      employe.updateItems(list ?? []);
+    } catch (e) {
+      emitFailure(failureResponse: "Erreur chargement utilisateur");
+    }
+  }
+  Future<void> _loadApp() async {
+    try {
+      final list =    await BuildingRepository().getRommByBuilding(
+        Utils.idBuilding ?? "",
+      ) ??
+          [];
+
+      appartement.updateItems(list);
+      emitLoaded();
+    } catch (e) {
+      emitFailure(failureResponse: "Erreur chargement utilisateur");
+    }
+  }
   @override
   void onSubmitting() async {
-    final dateFormat = DateFormat('yyyy-MM-dd');
-    final timeFormat = DateFormat('hh:mm a'); // Format AM/PM
+    try {
+      print("submiiitttiing 1");
 
-    print('Soumission du planning :');
-    print('Employé: ${employe.value}');
-    print('Appartement: ${appartement.value}');
-    print('Date: ${date.value != null ? dateFormat.format(date.value!) : 'N/A'}');
-    print('Note: ${note.value}');
+      final employeId = employe.value?.id;
+      final appartementId = appartement.value?.id;
 
-    // Simuler un appel API
-    await Future.delayed(const Duration(seconds: 1));
+      final selectedDate = date.value!;
 
-    emitSuccess(
-      canSubmitAgain: true,
-      successResponse: 'Planning assigné avec succès !',
-    );
+      final startTime = heureDebut.value!;
+      final endTime = heureFin.value!;
+
+      final dateDebut = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        startTime.hour,
+        startTime.minute,
+      );
+
+      final dateFin = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        endTime.hour,
+        endTime.minute,
+      );
+
+      print("submiiitttiing 2");
+
+     var res =  await BuildingRepository().addTache( cleaner_id : employeId,
+         building_id: Utils.idBuilding ?? "",
+         room_id: appartementId,
+          start_date: dateDebut.toUtc().toIso8601String(),
+    end_date: dateFin.toUtc().toIso8601String(),
+   );
+
+     if(res != null)
+      emitSuccess(
+        canSubmitAgain: true,
+        successResponse: 'Planning assigné avec succès !',
+      );
+     else
+       emitFailure(failureResponse:  "Erreur lors de la création api");
+
+
+    } catch (e) {
+
+      print("eexeceptionnn $e");
+      emitFailure(failureResponse:  "Erreur lors de la création");
+    }
+
+
   }
 }

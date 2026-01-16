@@ -5,6 +5,7 @@
 
 import 'package:control_empl/model/appartement.dart';
 import 'package:control_empl/model/tache.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../data/building_api.dart';
 import '../model/building.dart';
@@ -60,6 +61,34 @@ class BuildingRepository {
 
 
         return list;
+      }
+      return null;
+    }catch (e)
+    {
+      print("e $e");
+      return null;
+    }
+  }
+
+  Future<bool?> addRommbyBuilding(String idBuilding ,{String? name , String? description} ) async {
+    final response = await buildingApi.addAppartement(idBuilding , name : name , description:   description);
+    try {
+      if (response != null) {
+          return true;
+      }
+      return null;
+    }catch (e)
+    {
+      print("e $e");
+      return null;
+    }
+  }
+
+  Future<bool?> addTache({String? cleaner_id , String? building_id , String? room_id , String? start_date , String? end_date } ) async {
+    final response = await buildingApi.addTache(cleaner_id: cleaner_id , building_id: building_id , room_id: room_id , start_date: start_date , end_date: end_date);
+    try {
+      if (response != null) {
+        return true;
       }
       return null;
     }catch (e)

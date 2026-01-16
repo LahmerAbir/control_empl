@@ -3,6 +3,7 @@ import 'dart:convert';
 
 
 import 'package:flutter/material.dart';
+import 'package:flutter_form_bloc/flutter_form_bloc.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/user_response.dart';
@@ -18,6 +19,7 @@ abstract class Utils {
   static bool? isFirstAccess;
   static UserRes? me;
   static String? status;
+  static String? idBuilding;
 
   static ValueNotifier<int> totalItems = ValueNotifier<int>(0); // <-- this one
 
@@ -98,7 +100,18 @@ abstract class Utils {
     SharedPreferences pref = await SharedPreferences.getInstance();
     return pref.getBool('isFirstCnx');
   }
+  static String getOnlyDate(String isoDate) {
+    if(isoDate == "null") return "encours";
+    final dateTime = DateTime.parse(isoDate);
+    return "${dateTime.year.toString().padLeft(4, '0')}-"
+        "${dateTime.month.toString().padLeft(2, '0')}-"
+        "${dateTime.day.toString().padLeft(2, '0')}";
+  }
 
+  static String getOnlyTime(String isoDate) {
+    final dateTime = DateTime.parse(isoDate);
+    return DateFormat('HH:mm').format(dateTime);
+  }
   static Future<void> isFirstCnx(bool value) async {
     SharedPreferences pref = await SharedPreferences.getInstance();
     pref.setBool('isFirstCnx', value);

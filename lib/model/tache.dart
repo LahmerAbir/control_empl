@@ -1,74 +1,99 @@
 class TachePlanning {
-  String? id;
-  String? cleanerId;
-  String? buildingId;
-  String? roomId;
-  String? startDate;
-  String? endDate;
-  Room? building;
-  Room? room;
-  String? createdAt;
-  String? updatedAt;
+  final String? id;
+  final String? cleanerId;
+  final String? buildingId;
+  final String? roomId;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final Cleaner? cleaner;
+  final Room? room;
 
-  TachePlanning(
-      {this.id,
-        this.cleanerId,
-        this.buildingId,
-        this.roomId,
-        this.startDate,
-        this.endDate,
-        this.building,
-        this.room,
-        this.createdAt,
-        this.updatedAt});
+  TachePlanning({
+     this.id,
+     this.cleanerId,
+     this.buildingId,
+     this.roomId,
+     this.startDate,
+    this.endDate,
+     this.createdAt,
+     this.updatedAt,
+    this.cleaner,
+    this.room,
+  });
 
-  TachePlanning.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    cleanerId = json['cleaner_id'];
-    buildingId = json['building_id'];
-    roomId = json['room_id'];
-    startDate = json['start_date'];
-    endDate = json['end_date'];
-    building = json['building'] != null
-        ? new Room.fromJson(json['building'])
-        : null;
-    room = json['room'] != null ? new Room.fromJson(json['room']) : null;
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
+  /// FROM JSON
+  factory TachePlanning.fromJson(Map<String, dynamic> json) {
+    return TachePlanning(
+      id: json['id'],
+      cleanerId: json['cleaner_id'],
+      buildingId: json['building_id'],
+      roomId: json['room_id'],
+      startDate: DateTime.parse(json['start_date']),
+      endDate:
+      json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+      cleaner:
+      json['cleaner'] != null ? Cleaner.fromJson(json['cleaner']) : null,
+      room: json['room'] != null ? Room.fromJson(json['room']) : null,
+    );
   }
 
+  /// TO JSON
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['cleaner_id'] = this.cleanerId;
-    data['building_id'] = this.buildingId;
-    data['room_id'] = this.roomId;
-    data['start_date'] = this.startDate;
-    data['end_date'] = this.endDate;
-    if (this.building != null) {
-      data['building'] = this.building!.toJson();
-    }
-    if (this.room != null) {
-      data['room'] = this.room!.toJson();
-    }
-    data['created_at'] = this.createdAt;
-    data['updated_at'] = this.updatedAt;
-    return data;
+    return {
+      'id': id,
+      'cleaner_id': cleanerId,
+      'building_id': buildingId,
+      'room_id': roomId,
+      'start_date': startDate?.toIso8601String(),
+      'end_date': endDate?.toIso8601String(),
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'cleaner': cleaner?.toJson(),
+      'room': room?.toJson(),
+    };
   }
 }
+class Cleaner {
+  final String firstName;
+  final String lastName;
 
-class Room {
-  String? name;
+  Cleaner({
+    required this.firstName,
+    required this.lastName,
+  });
 
-  Room({this.name});
-
-  Room.fromJson(Map<String, dynamic> json) {
-    name = json['name'];
+  factory Cleaner.fromJson(Map<String, dynamic> json) {
+    return Cleaner(
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+    );
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['name'] = this.name;
-    return data;
+    return {
+      'first_name': firstName,
+      'last_name': lastName,
+    };
+  }
+}
+class Room {
+  final String name;
+
+  Room({required this.name});
+
+  factory Room.fromJson(Map<String, dynamic> json) {
+    return Room(
+      name: json['name'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+    };
   }
 }

@@ -3,6 +3,7 @@ import 'package:control_empl/model/appartement.dart';
 import 'package:control_empl/model/tache.dart';
 import 'package:control_empl/model/user/user.dart';
 import 'package:control_empl/ui/common/loading.dart';
+import 'package:control_empl/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +48,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         buildings = await BuildingRepository().getBuilding() ?? [];
         if (buildings.isNotEmpty) {
           selectedBuildingId = buildings.first.id;
+          Utils.idBuilding = selectedBuildingId;
+
           appartement = await BuildingRepository().getRommByBuilding(
               buildings.first.id ?? "") ?? [];
           tacheList = await BuildingRepository().getTachesByBuilding(
@@ -132,6 +135,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     });
                     try {
 
+                      Utils.idBuilding = selectedBuildingId;
                       var   auxappartement = await BuildingRepository().getRommByBuilding(
                           selectedBuildingId ?? "") ?? [];
                        var auxtacheList = await BuildingRepository().getTachesByBuilding(
@@ -167,8 +171,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: _selectedIndex == 0 ? DashboardContent(appartement: appartement,users : users , tacheList: tacheList) : _selectedIndex == 1 ? LogementsScreen(selectedBuildingId : selectedBuildingId ?? "") : _selectedIndex == 2 ? EquipeScreen()
-        : _selectedIndex == 3 ? PlanningScreen(): Container(),
+        child: _selectedIndex == 0 ? DashboardContent(appartement: appartement,users : users , tacheList: tacheList) : _selectedIndex == 1 ?
+        LogementsScreen(selectedBuildingId : selectedBuildingId ?? "") : _selectedIndex == 2 ? EquipeScreen()
+        : _selectedIndex == 3 ? PlanningScreen(selectedBuildingId:  selectedBuildingId ?? "" ,): Container(),
       ),
       bottomNavigationBar: BottomNavigationBar(
       // ... (Styles généraux) ...

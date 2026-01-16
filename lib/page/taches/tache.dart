@@ -1,21 +1,28 @@
 import 'package:control_empl/blocs/tache_form_bloc.dart';
 import 'package:control_empl/model/tache.dart';
+import 'package:control_empl/ui/common/loading.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_bloc/flutter_form_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../../model/appartement.dart';
+import '../../model/employe.dart';
+import '../../repository/building_repository.dart';
+import '../../repository/employe_repository.dart';
+import '../../utils/utils.dart';
+
 class PlanningScreen extends StatefulWidget {
-  const PlanningScreen({super.key});
+  const PlanningScreen({super.key, required this.selectedBuildingId});
+
+  final String selectedBuildingId;
 
   @override
   State<PlanningScreen> createState() => _PlanningScreenState();
 }
 
 class _PlanningScreenState extends State<PlanningScreen> {
-  final List<TachePlanning> _allTaches = [
-
-  ];
+  List<TachePlanning> _allTaches = [];
 
   List<TachePlanning> _filteredTaches = [];
   final TextEditingController _searchController = TextEditingController();
@@ -23,12 +30,31 @@ class _PlanningScreenState extends State<PlanningScreen> {
   DateTime? _selectedDate;
 
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy', 'en');
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _filteredTaches = _allTaches;
-    _searchController.addListener(_applyFilters);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        _allTaches =
+            await BuildingRepository().getTachesByBuilding(
+              widget.selectedBuildingId ?? "",
+            ) ??
+            [];
+        setState(() {
+          isLoading = false;
+          _filteredTaches = _allTaches;
+          _searchController.addListener(_applyFilters);
+        });
+      } catch (e) {
+        print("exception $e");
+        setState(() {
+          isLoading = false;
+        });
+      }
+    });
   }
 
   @override
@@ -38,11 +64,16 @@ class _PlanningScreenState extends State<PlanningScreen> {
     super.dispose();
   }
 
+  bool isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
     final String? dateQuery = _selectedDate != null
         ? _dateFormat.format(_selectedDate!)
         : null;
+    print("_selectedDate $_selectedDate");
 
     setState(() {
       _filteredTaches = _allTaches.where((tache) {
@@ -51,7 +82,12 @@ class _PlanningScreenState extends State<PlanningScreen> {
             tache.room!.name!.toLowerCase().contains(query) ||
             tache.cleanerId!.toLowerCase().contains(query);
 
-        final matchesDate = dateQuery == null || tache.startDate == dateQuery;
+        final matchesDate =
+            dateQuery == null ||
+            isSameDate(
+              tache.startDate ?? DateTime.now(),
+              _selectedDate ?? DateTime.now(),
+            );
 
         return matchesSearch && matchesDate;
       }).toList();
@@ -140,119 +176,132 @@ class _PlanningScreenState extends State<PlanningScreen> {
         toolbarHeight: 80,
       ),
 
-      body: SizedBox(
-        height: MediaQuery.of(context).size.height,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher (Appartement, Employé)...',
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+      body: isLoading
+          ? Loader()
+          : _allTaches.isNotEmpty
+          ? SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher (Appartement, Employé)...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade200,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10.0,
+                          ),
+                        ),
+                      ),
                     ),
-                    filled: true,
-                    fillColor: Colors.grey.shade200,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10.0),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
+                    const SizedBox(height: 15),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                child: InkWell(
-                  onTap: () => _selectDate(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0,
-                      vertical: 15.0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_month,
-                              color: Colors.blue,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              dateDisplay,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      child: InkWell(
+                        onTap: () => _selectDate(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12.0,
+                            vertical: 15.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_month,
+                                    color: Colors.blue,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    dateDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                              if (_selectedDate != null)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: _clearDateFilter,
+                                )
+                              else
+                                const Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.black,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.45,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            ..._filteredTaches.map((tache) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6.0,
+                                  vertical: 6.0,
+                                ),
+                                child: PlanningCard(tache: tache),
+                              );
+                            }).toList(),
+                            if (_filteredTaches.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(6.0),
+                                child: Center(
+                                  child: Text(
+                                    "Liste vide",
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                        if (_selectedDate != null)
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.grey),
-                            onPressed: _clearDateFilter,
-                          )
-                        else
-                          const Icon(
-                            Icons.keyboard_arrow_down,
-                            color: Colors.black,
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.45,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      ..._filteredTaches.map((tache) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6.0,
-                            vertical: 6.0,
-                          ),
-                          child: PlanningCard(tache: tache),
-                        );
-                      }).toList(),
-                      if (_filteredTaches.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(6.0),
-                          child: Center(
-                            child: Text(
-                              "Liste vide",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            )
+          : Text("Liste est vide"),
     );
   }
+
   void showAjoutPlanningDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -260,12 +309,11 @@ class _PlanningScreenState extends State<PlanningScreen> {
       builder: (context) {
         return BlocProvider(
           create: (context) => TacheFormBloc(),
-          child: const AjoutPlanningDialog(),
+          child: AjoutPlanningDialog(),
         );
       },
     );
   }
-
 }
 
 class PlanningCard extends StatelessWidget {
@@ -314,10 +362,9 @@ class PlanningCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-
                     children: [
                       Text(
-                        'Appartement N : ${tache.room!.name}',
+                        'Appartement : ${tache.room!.name}',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -325,7 +372,7 @@ class PlanningCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       // Badge de Statut
-                     /* Text(
+                      /* Text(
                         ' ${tache.statut}',
                         style: TextStyle(
                           color: statusColor,
@@ -340,15 +387,15 @@ class PlanningCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${tache.startDate}',
+                        "${Utils.getOnlyDate(tache.startDate.toString())} -",
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
                         ),
                       ),
-                      const SizedBox(width: 15),
+                      const SizedBox(width: 5),
                       Text(
-                        '${tache.startDate}',
+                        Utils.getOnlyDate(tache.endDate.toString()),
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
@@ -359,7 +406,7 @@ class PlanningCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   Text(
-                    'Effectué à : ${tache.cleanerId}',
+                    'Effectué à : ${tache.cleaner?.lastName} ${tache.cleaner?.firstName}',
                     style: const TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                 ],
@@ -504,7 +551,7 @@ class TacheDetailDialog extends StatelessWidget {
                 Text(
                   'Détail Tâche: ${tache.room!.name}',
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -525,16 +572,21 @@ class TacheDetailDialog extends StatelessWidget {
                     // Infos Tâche
                     _buildInfoRow(
                       'Employé',
-                      tache.cleanerId ?? "",
+                      "${tache.cleaner?.lastName} ${tache.cleaner?.firstName}",
                       Icons.person_outline,
                     ),
                     _buildInfoRow(
                       'Date',
-                      tache.startDate ?? "",
+                      "${Utils.getOnlyDate(tache.startDate.toString())} - " +
+                          Utils.getOnlyDate(tache.endDate.toString()),
                       Icons.calendar_today_outlined,
                     ),
-                    _buildInfoRow('Heure', tache.startDate!, Icons.access_time),
-                  /*  _buildInfoRow(
+                    _buildInfoRow(
+                      'Heure',
+                      Utils.getOnlyTime(tache.startDate.toString()),
+                      Icons.access_time,
+                    ),
+                    /*  _buildInfoRow(
                       'Statut',
                       tache.statut,
                       Icons.check_circle_outline,
@@ -550,7 +602,7 @@ class TacheDetailDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 5),
-                   /* Text(
+                    /* Text(
                       tache.description,
                       style: TextStyle(
                         fontSize: 14,
@@ -566,7 +618,7 @@ class TacheDetailDialog extends StatelessWidget {
                     ),*/
 
                     // Photos Après
-                 /*   _buildPhotoGallery(
+                    /*   _buildPhotoGallery(
                       'Photos Après Nettoyage',
                       tache.photosApres,
                     ),*/
@@ -579,12 +631,16 @@ class TacheDetailDialog extends StatelessWidget {
       ),
     );
   }
-
-
-
 }
-class AjoutPlanningDialog extends StatelessWidget {
-  const AjoutPlanningDialog({super.key});
+
+class AjoutPlanningDialog extends StatefulWidget {
+  AjoutPlanningDialog({super.key});
+
+  @override
+  State<AjoutPlanningDialog> createState() => AjoutPlanningDialogState();
+}
+
+class AjoutPlanningDialogState extends State<AjoutPlanningDialog> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
@@ -595,11 +651,17 @@ class AjoutPlanningDialog extends StatelessWidget {
     );
   }
 
-  InputDecoration _inputDecoration({required String hintText, Widget? suffixIcon, EdgeInsetsGeometry? contentPadding}) {
+  InputDecoration _inputDecoration({
+    required String hintText,
+    Widget? suffixIcon,
+    EdgeInsetsGeometry? contentPadding,
+  }) {
     return InputDecoration(
       hintText: hintText,
       suffixIcon: suffixIcon,
-      contentPadding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+      contentPadding:
+          contentPadding ??
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide.none,
@@ -612,12 +674,37 @@ class AjoutPlanningDialog extends StatelessWidget {
       fillColor: Colors.grey.shade200,
     );
   }
+
+  List<Appartement> logements = [];
+  bool isLoading = true;
+  List<Employe> equipe = [];
+
+  @override
+  initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      logements =
+          await BuildingRepository().getRommByBuilding(
+            Utils.idBuilding ?? "",
+          ) ??
+          [];
+
+      setState(() {
+        isLoading = false;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final planningFormBloc = context.read<TacheFormBloc>();
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 24.0,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
 
       child: Container(
@@ -626,16 +713,12 @@ class AjoutPlanningDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Ajouter une Tache',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -650,38 +733,95 @@ class AjoutPlanningDialog extends StatelessWidget {
                 onSubmitting: (context, state) {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
-                    ..showSnackBar(const SnackBar(content: Text('Assignation en cours...')));
+                    ..showSnackBar(
+                      const SnackBar(content: Text('Assignation en cours...')),);
                 },
                 onSuccess: (context, state) {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
-                    ..showSnackBar(SnackBar(content: Text(state.successResponse!)));
-                  Navigator.of(context).pop(); // Fermer le dialogue
+                    ..showSnackBar(
+                      SnackBar(content: Text(state.successResponse!)),
+                    );
+                  Navigator.of(context).pop();
                 },
                 onFailure: (context, state) {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
-                    ..showSnackBar(SnackBar(content: Text(state.failureResponse!)));
+                    ..showSnackBar(
+                      SnackBar(content: Text(state.failureResponse!)),
+                    );
                 },
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildLabel('Employé'),
-                      DropdownFieldBlocBuilder<String>(
-                        selectFieldBloc: planningFormBloc.employe,
 
-                        decoration: _inputDecoration(hintText: 'Sélectionner un employé',suffixIcon: const Icon(Icons.menu_outlined, color: Colors.blue),),
-                        itemBuilder: (context, value) => FieldItem(child: Text(value)),
+                      BlocProvider(
+                        create: (_) => TacheFormBloc(),
+                        child: BlocBuilder<TacheFormBloc, FormBlocState>(
+                          builder: (context, state) {
+
+                            if (state is FormBlocLoading) {
+                              return const CircularProgressIndicator();
+                            } else {
+                              return DropdownFieldBlocBuilder<Employe>(
+                                selectFieldBloc: planningFormBloc.employe,
+                                decoration: _inputDecoration(
+                                  hintText: 'Sélectionner un employé',
+                                  suffixIcon: const Icon(
+                                    Icons.menu_outlined,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                itemBuilder: (context, emp) {
+                                  return FieldItem(
+                                    child: Text(
+                                      emp.lastname ?? "${emp.firstname}",
+                                    ),
+                                  );
+                                },
+                                onChanged: (value) {
+                                  print("Selected building id: ${value?.id}");
+                                },
+                              );
+                            }
+                          },
+                        ),
                       ),
                       const SizedBox(height: 15),
 
-                      _buildLabel('Appartement N :'),
-                      DropdownFieldBlocBuilder<String>(
-                        selectFieldBloc: planningFormBloc.appartement,
-                        decoration: _inputDecoration(hintText: 'Sélectionner un appartement'),
-                        itemBuilder: (context, value) => FieldItem(child: Text(value)),
+                      _buildLabel('Appartement :'),
+
+                      BlocProvider(
+                        create: (_) => TacheFormBloc(),
+                        child: BlocBuilder<TacheFormBloc, FormBlocState>(
+                          builder: (context, state) {
+
+                            if (state is FormBlocLoading) {
+                              return const CircularProgressIndicator();
+                            } else {
+                              return DropdownFieldBlocBuilder<Appartement>(
+                                selectFieldBloc: planningFormBloc.appartement,
+                                decoration: _inputDecoration(
+                                  hintText: 'Sélectionner un appartement',
+                                  suffixIcon: const Icon(
+                                    Icons.menu_outlined,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                itemBuilder: (context, emp) {
+                                  return FieldItem(child: Text(emp.name ?? ""));
+                                },
+                                onChanged: (value) {
+                                  print("Selected building id: ${value?.id}");
+                                },
+                              );
+                            }
+                          },
+                        ),
                       ),
+
                       const SizedBox(height: 15),
 
                       _buildLabel('Date'),
@@ -693,7 +833,10 @@ class AjoutPlanningDialog extends StatelessWidget {
                         lastDate: DateTime(2030),
                         decoration: _inputDecoration(
                           hintText: 'Sélectionner une date',
-                          suffixIcon: const Icon(Icons.calendar_month, color: Colors.grey),
+                          suffixIcon: const Icon(
+                            Icons.calendar_month,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 15),
@@ -708,9 +851,17 @@ class AjoutPlanningDialog extends StatelessWidget {
                                 TimeFieldBlocBuilder(
                                   timeFieldBloc: planningFormBloc.heureDebut,
                                   format: DateFormat('hh:mm a'),
-                                  decoration: _inputDecoration(hintText: '09:30 AM',
-                                      suffixIcon: const Icon(Icons.access_time, color: Colors.grey)
-                                      , contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15)),
+                                  decoration: _inputDecoration(
+                                    hintText: '09:30 AM',
+                                    suffixIcon: const Icon(
+                                      Icons.access_time,
+                                      color: Colors.grey,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 15,
+                                    ),
+                                  ),
                                   initialTime: TimeOfDay(hour: 12, minute: 30),
                                 ),
                               ],
@@ -725,8 +876,18 @@ class AjoutPlanningDialog extends StatelessWidget {
                                 TimeFieldBlocBuilder(
                                   timeFieldBloc: planningFormBloc.heureFin,
                                   format: DateFormat('hh:mm a'),
-                                  decoration:
-                                  _inputDecoration(hintText: '12:30 PM', suffixIcon: const Icon(Icons.access_time, color: Colors.grey), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15)), initialTime: TimeOfDay(hour: 12, minute: 30),
+                                  decoration: _inputDecoration(
+                                    hintText: '12:30 PM',
+                                    suffixIcon: const Icon(
+                                      Icons.access_time,
+                                      color: Colors.grey,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 15,
+                                    ),
+                                  ),
+                                  initialTime: TimeOfDay(hour: 12, minute: 30),
                                 ),
                               ],
                             ),
@@ -740,7 +901,11 @@ class AjoutPlanningDialog extends StatelessWidget {
                       TextFieldBlocBuilder(
                         textFieldBloc: planningFormBloc.note,
                         maxLines: 5,
-                        decoration: _inputDecoration(hintText: 'Ajouter description.', contentPadding: const EdgeInsets.all(12)),
+
+                        decoration: _inputDecoration(
+                          hintText: 'Ajouter description.',
+                          contentPadding: const EdgeInsets.all(12),
+                        ),
                       ),
                     ],
                   ),
@@ -756,7 +921,9 @@ class AjoutPlanningDialog extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: planningFormBloc.submit,
                 child: const Text(
