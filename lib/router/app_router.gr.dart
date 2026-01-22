@@ -133,7 +133,7 @@ class LoginRouteArgs {
 class ModifierTacheRoute extends PageRouteInfo<ModifierTacheRouteArgs> {
   ModifierTacheRoute({
     Key? key,
-    required TachePlanning tache,
+    required PlanningCleaner tache,
     List<PageRouteInfo>? children,
   }) : super(
           ModifierTacheRoute.name,
@@ -158,7 +158,7 @@ class ModifierTacheRouteArgs {
 
   final Key? key;
 
-  final TachePlanning tache;
+  final PlanningCleaner tache;
 
   @override
   String toString() {

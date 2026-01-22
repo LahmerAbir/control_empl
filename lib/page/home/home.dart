@@ -10,11 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../model/building.dart';
 import '../../repository/building_repository.dart';
+import '../../router/app_router.dart';
 import '../appartemennt/appartement.dart';
 import '../employe/employe.dart';
 import '../taches/tache.dart';
 import 'package:auto_route/auto_route.dart';
-
 
 @RoutePage()
 class HomePage extends ConsumerStatefulWidget {
@@ -26,19 +26,21 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   int _selectedIndex = 0;
-  String? selectedBuildingId ;
+  String? selectedBuildingId;
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
+
   List<Building> buildings = [];
   List<Appartement> appartement = [];
   List<TachePlanning> tacheList = [];
   List<User> users = [];
 
   bool isLoading = true;
+
   @override
   initState() {
     super.initState();
@@ -50,26 +52,29 @@ class _HomePageState extends ConsumerState<HomePage> {
           selectedBuildingId = buildings.first.id;
           Utils.idBuilding = selectedBuildingId;
 
-          appartement = await BuildingRepository().getRommByBuilding(
-              buildings.first.id ?? "") ?? [];
-          tacheList = await BuildingRepository().getTachesByBuilding(
-              buildings.first.id ?? "") ?? [];
+          appartement =
+              await BuildingRepository().getRommByBuilding(
+                buildings.first.id ?? "",
+              ) ??
+              [];
+          tacheList =
+              await BuildingRepository().getTachesByBuilding(
+                buildings.first.id ?? "",
+              ) ??
+              [];
           users = await ref.users.findAll();
         }
         setState(() {
           isLoading = false;
         });
-      }catch(e)
-      {
+      } catch (e) {
         print("exception $e");
         setState(() {
           isLoading = false;
         });
       }
-    }
-    );
-
-    }
+    });
+  }
 
   Widget _buildIconWithCircle(IconData iconData, int index) {
     final isSelected = _selectedIndex == index;
@@ -80,141 +85,180 @@ class _HomePageState extends ConsumerState<HomePage> {
         decoration: BoxDecoration(
           color: Colors.blue.shade100,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.blue.shade800,
-            width: 1.5,
-          ),
+          border: Border.all(color: Colors.blue.shade800, width: 1.5),
         ),
-        child: Icon(
-          iconData,
-          color: Colors.blue.shade800,
-          size: 24,
-        ),
+        child: Icon(iconData, color: Colors.blue.shade800, size: 24),
       );
     } else {
-      return Icon(
-        iconData,
-        color: Colors.grey.shade600,
-        size: 24,
-      );
+      return Icon(iconData, color: Colors.grey.shade600, size: 24);
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    return isLoading ? Loader() :  buildings.isNotEmpty ? Scaffold(
-        backgroundColor : Colors.white,
-      appBar: AppBar(
-        title: Padding(
-          padding: const EdgeInsets.only(top :20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+    return isLoading
+        ? Loader()
+        : buildings.isNotEmpty
+        ? Scaffold(
+            backgroundColor: Colors.white,
+            appBar: AppBar(
+              title: Padding(
+                padding: const EdgeInsets.only(top: 20.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 65,
+                      child: Text(
+                        "Bâtiment : ",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 50,
+                      width: 150,
+                      child: DropdownButton<String>(
+                        value: selectedBuildingId,
+                        //  hint: const Text("Sélectionner un bâtiment"),
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        isExpanded: true,
+                        items: buildings.map((building) {
+                          return DropdownMenuItem<String>(
+                            value: building.id,
+                            child: Text(
+                              building.name ?? "",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) async {
+                          if (selectedBuildingId != value)
+                            setState(() {
+                              selectedBuildingId = value;
+                              isLoading = true;
+                            });
+                          try {
+                            Utils.idBuilding = selectedBuildingId;
+                            var auxappartement =
+                                await BuildingRepository().getRommByBuilding(
+                                  selectedBuildingId ?? "",
+                                ) ??
+                                [];
+                            var auxtacheList =
+                                await BuildingRepository().getTachesByBuilding(
+                                  selectedBuildingId ?? "",
+                                ) ??
+                                [];
+                            var auxusers = await ref.users.findAll();
 
-              Container(width: 65    , child: Text("Bâtiment : " , style : TextStyle(color: Colors.black , fontWeight:  FontWeight.bold , fontSize: 14),
-              ),),
-              SizedBox(
-                height: 50,
-                width: 150,
-                child: DropdownButton<String>(
-                  value: selectedBuildingId,
-                //  hint: const Text("Sélectionner un bâtiment"),
-                  style : TextStyle(color: Colors.black , fontWeight:  FontWeight.bold),
-                  isExpanded: true,
-                  items: buildings.map((building) {
-                    return DropdownMenuItem<String>(
-                      value: building.id,
-                      child: Text(building.name ?? ""  , style: TextStyle(color: Colors.black , fontWeight:  FontWeight.w600  ,)),
-                    );
-                  }).toList(),
-                  onChanged: (value) async {
-                    if(selectedBuildingId != value)
-
-                    setState(() {
-                      selectedBuildingId = value;
-                      isLoading = true ;
-                    });
-                    try {
-
-                      Utils.idBuilding = selectedBuildingId;
-                      var   auxappartement = await BuildingRepository().getRommByBuilding(
-                          selectedBuildingId ?? "") ?? [];
-                       var auxtacheList = await BuildingRepository().getTachesByBuilding(
-                           selectedBuildingId ?? "") ?? [];
-                       var auxusers = await ref.users.findAll();
-
-                      setState(() {
-                        isLoading = false;
-                        appartement = auxappartement;
-                        tacheList = auxtacheList;
-                        users =auxusers;
-                      });
-                    }catch(e)
-                    {
-
-                      print("exception $e");
-                      setState(() {
-                        isLoading = false;
-                      });
-                    }
-                    print("Building ID sélectionné : $selectedBuildingId");
-                  },
+                            setState(() {
+                              isLoading = false;
+                              appartement = auxappartement;
+                              tacheList = auxtacheList;
+                              users = auxusers;
+                            });
+                          } catch (e) {
+                            print("exception $e");
+                            setState(() {
+                              isLoading = false;
+                            });
+                          }
+                          print(
+                            "Building ID sélectionné : $selectedBuildingId",
+                          );
+                        },
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Utils.setMe(null);
+                        Utils.setToken(null);
+                        context.router.replaceAll([LoginRoute()]);
+                      },
+                      child: Icon(Icons.logout, size: 20),
+                    ),
+                  ],
                 ),
               ),
-              Icon(Icons.logout , size: 20,)
-            ],
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        toolbarHeight: 60,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: _selectedIndex == 0 ? DashboardContent(appartement: appartement,users : users , tacheList: tacheList) : _selectedIndex == 1 ?
-        LogementsScreen(selectedBuildingId : selectedBuildingId ?? "") : _selectedIndex == 2 ? EquipeScreen()
-        : _selectedIndex == 3 ? PlanningScreen(selectedBuildingId:  selectedBuildingId ?? "" ,): Container(),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-      // ... (Styles généraux) ...
-      backgroundColor: Colors.white,
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.blue.shade800,
-      unselectedItemColor: Colors.grey.shade600,
+              centerTitle: true,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              toolbarHeight: 60,
+            ),
+            body: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: _selectedIndex == 0
+                  ? DashboardContent(
+                      appartement: appartement,
+                      users: users,
+                      tacheList: tacheList,
+                    )
+                  : _selectedIndex == 1
+                  ? LogementsScreen(
+                      selectedBuildingId: selectedBuildingId ?? "",
+                    )
+                  : _selectedIndex == 2
+                  ? EquipeScreen()
+                  : _selectedIndex == 3
+                  ? PlanningScreen(selectedBuildingId: selectedBuildingId ?? "")
+                  : Container(),
+            ),
+            bottomNavigationBar: BottomNavigationBar(
+              // ... (Styles généraux) ...
+              backgroundColor: Colors.white,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Colors.blue.shade800,
+              unselectedItemColor: Colors.grey.shade600,
 
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
 
-      items: <BottomNavigationBarItem>[
-        BottomNavigationBarItem(
-          icon: _buildIconWithCircle(Icons.house_outlined, 0),
-          label: 'Accueil',
-        ),
-        BottomNavigationBarItem(
-          icon: _buildIconWithCircle(Icons.meeting_room, 1),
-          label: 'Appartements',
-        ),
-        BottomNavigationBarItem(
-          icon: _buildIconWithCircle(Icons.people_alt_outlined, 2),
-          label: 'Employés',
-        ),
-        BottomNavigationBarItem(
-          icon: _buildIconWithCircle(Icons.calendar_month_outlined, 3),
-          label: 'Taches',
-        ),
-      ],
-    ),
-
-    ) : Center(child: Text("Une erreur s\'est produite"),);
+              items: <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: _buildIconWithCircle(Icons.house_outlined, 0),
+                  label: 'Accueil',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildIconWithCircle(Icons.meeting_room, 1),
+                  label: 'Appartements',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildIconWithCircle(Icons.people_alt_outlined, 2),
+                  label: 'Employés',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildIconWithCircle(Icons.calendar_month_outlined, 3),
+                  label: 'Taches',
+                ),
+              ],
+            ),
+          )
+        : Center(child: Text("Une erreur s\'est produite"));
   }
 }
 
 class DashboardContent extends StatelessWidget {
+  const DashboardContent({
+    super.key,
+    required this.appartement,
+    required this.users,
+    required this.tacheList,
+  });
 
-  const DashboardContent({super.key , required this.appartement , required this.users , required this.tacheList});
-    final List<Appartement> appartement;
-    final List<User> users;
-    final List<TachePlanning> tacheList ;
+  final List<Appartement> appartement;
+  final List<User> users;
+  final List<TachePlanning> tacheList;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -224,7 +268,7 @@ class DashboardContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _buildSummaryCards(appartement , users , tacheList),
+            _buildSummaryCards(appartement, users, tacheList),
             const SizedBox(height: 20),
             const Text(
               'Activité récente',
@@ -242,7 +286,11 @@ class DashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCards(List<Appartement> appartement, List<User> users , List<TachePlanning> tacheList) {
+  Widget _buildSummaryCards(
+    List<Appartement> appartement,
+    List<User> users,
+    List<TachePlanning> tacheList,
+  ) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -251,20 +299,43 @@ class DashboardContent extends StatelessWidget {
       mainAxisSpacing: 12.0,
       childAspectRatio: 1.5,
       children: <Widget>[
-        _buildInfoCard('Total Appartements', appartement.length.toString(), Icons.meeting_room_sharp, Colors.blue),
-        _buildInfoCard('Employés', users.length.toString(), Icons.person, Colors.blue),
-        _buildInfoCard('Tâches encours', tacheList.length.toString(), Icons.group_work_outlined, Colors.blue),
-        _buildInfoCard('Tâches Terminés', tacheList.length.toString(), Icons.check_circle, Colors.blue),
+        _buildInfoCard(
+          'Total Appartements',
+          appartement.length.toString(),
+          Icons.meeting_room_sharp,
+          Colors.blue,
+        ),
+        _buildInfoCard(
+          'Employés',
+          users.length.toString(),
+          Icons.person,
+          Colors.blue,
+        ),
+        _buildInfoCard(
+          'Tâches encours',
+          tacheList.length.toString(),
+          Icons.group_work_outlined,
+          Colors.blue,
+        ),
+        _buildInfoCard(
+          'Tâches Terminés',
+          tacheList.length.toString(),
+          Icons.check_circle,
+          Colors.blue,
+        ),
       ],
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon, Color color) {
+  Widget _buildInfoCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -273,10 +344,7 @@ class DashboardContent extends StatelessWidget {
           children: <Widget>[
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -288,11 +356,7 @@ class DashboardContent extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Icon(
-                  icon,
-                  color: color,
-                  size: 25,
-                ),
+                Icon(icon, color: color, size: 25),
               ],
             ),
           ],
@@ -302,61 +366,39 @@ class DashboardContent extends StatelessWidget {
   }
 
   Widget _buildRecentActivityList() {
-    final List<Map<String, String>> activities = [
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Terminé', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'En cours', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Planifié', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Planifié', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Planifié', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Planifié', 'couleur': 'Bleu'},
-      {'appartement': 'Appartement 101', 'personne': 'Abir lahmer', 'temps': 'Il y a 2h', 'statut': 'Planifié', 'couleur': 'Bleu'},
-    ];
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: ListView.separated(
+
+    return
+      ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: activities.length,
+        itemCount: tacheList.length,
         separatorBuilder: (context, index) => const Divider(
           height: 1,
           indent: 16,
           endIndent: 16,
-          color: Color(0xFFF0F0F0),
+          color: Colors.white,
         ),
         itemBuilder: (context, index) {
-          final activity = activities[index];
+          final activity = tacheList[index];
           return _buildActivityItem(
-            activity['appartement']!,
-            activity['personne']!,
-            activity['temps']!,
-            activity['statut']!,
+            activity.room?.name ?? "",
+            "${activity.cleaner?.lastName ?? ""} ${activity.cleaner?.firstName ?? ""}",
           );
         },
-      ),
+
     );
   }
 
-  Widget _buildActivityItem(String logement, String personne, String temps, String statut) {
-    Color statusColor;
-    switch (statut) {
-      case 'Terminé':
-        statusColor = Colors.blue.shade700;
-        break;
-      case 'En cours':
-        statusColor = Colors.green.shade700;
-        break;
-      case 'Planifié':
-        statusColor = Colors.grey.shade500;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
+  Widget _buildActivityItem(
+    String logement,
+    String personne,
+  ) {
 
-    return Padding(
+
+    return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),child : Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -375,51 +417,24 @@ class DashboardContent extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   personne,
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.blue, fontSize: 14),
                 ),
               ],
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Text(
-              temps,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-          ),
 
-          SizedBox(
-            width: 80,
-            child: ElevatedButton(
-              onPressed: null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: statusColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                statut,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+        /*  IconButton(
+            icon: Icon(
+              Icons.remove_red_eye_outlined,
+              color: Colors.blue.shade600,
+              size: 25,
             ),
-          ),
+            onPressed: () {}
+            ,
+          ),*/
         ],
       ),
-    );
+    ) );
   }
 }

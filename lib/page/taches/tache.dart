@@ -1,4 +1,5 @@
 import 'package:control_empl/blocs/tache_form_bloc.dart';
+import 'package:control_empl/model/ImageNotes.dart';
 import 'package:control_empl/model/tache.dart';
 import 'package:control_empl/ui/common/loading.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,6 +11,7 @@ import '../../model/appartement.dart';
 import '../../model/employe.dart';
 import '../../repository/building_repository.dart';
 import '../../repository/employe_repository.dart';
+import '../../ui/common/loading_dialog.dart';
 import '../../utils/utils.dart';
 
 class PlanningScreen extends StatefulWidget {
@@ -301,19 +303,28 @@ class _PlanningScreenState extends State<PlanningScreen> {
           : Text("Liste est vide"),
     );
   }
-
-  void showAjoutPlanningDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      useSafeArea: true,
-      builder: (context) {
-        return BlocProvider(
-          create: (context) => TacheFormBloc(),
-          child: AjoutPlanningDialog(),
-        );
-      },
+  void showAjoutPlanningDialog(BuildContext context) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) =>  AjoutPlanningDialog()),
     );
+
+    if (result == true) {
+      setState(() {
+        isLoading = true;
+      });
+       _allTaches=
+          await BuildingRepository().getTachesByBuilding(
+            widget.selectedBuildingId,
+          ) ??
+              [];
+      setState(() {
+        isLoading = false;
+        _filteredTaches = _allTaches;
+
+      });
+    }
   }
+
 }
 
 class PlanningCard extends StatelessWidget {
@@ -321,20 +332,7 @@ class PlanningCard extends StatelessWidget {
 
   const PlanningCard({super.key, required this.tache});
 
-  Color _getStatusColor(String statut) {
-    switch (statut) {
-      case 'En Attend':
-        return Colors.green.shade600;
-      case 'Terminé':
-        return Colors.black;
-      case 'En cours':
-        return Colors.blue.shade600;
-      case 'Retard':
-        return Colors.red.shade600;
-      default:
-        return Colors.grey.shade600;
-    }
-  }
+
 
   void showTacheDetailDialog(BuildContext context, TachePlanning tache) {
     showDialog(
@@ -348,7 +346,17 @@ class PlanningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     //final statusColor = _getStatusColor(tache.statut);
+    final dtStart = DateTime.parse(tache.startDate != null ? tache.startDate.toString() : DateTime.now().toString());
+    final dtEnd = DateTime.parse(tache.endDate != null ? tache.endDate.toString() : DateTime.now().toString());
 
+    final dateStart =
+        "${dtStart.year}-${dtStart.month.toString().padLeft(2, '0')}-${dtStart.day.toString().padLeft(2, '0')}";
+    final dateEnd =
+        "${dtEnd.year}-${dtEnd.month.toString().padLeft(2, '0')}-${dtEnd.day.toString().padLeft(2, '0')}";
+    final timeStart =
+        "${dtStart.hour.toString().padLeft(2, '0')}:${dtStart.minute.toString().padLeft(2, '0')}";
+    final timeEnd =
+        "${dtEnd.hour.toString().padLeft(2, '0')}:${dtEnd.minute.toString().padLeft(2, '0')}";
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -361,47 +369,34 @@ class PlanningCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Appartement : ${tache.room!.name}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Badge de Statut
-                      /* Text(
-                        ' ${tache.statut}',
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),*/
-                    ],
+                  Text(
+                    'Appartement : ${tache.room!.name}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
 
-                  Row(
-                    children: [
-                      Text(
-                        "${Utils.getOnlyDate(tache.startDate.toString())} -",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black, // important sinon texte invisible
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        Utils.getOnlyDate(tache.endDate.toString()),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                      children: [
+                        const TextSpan(
+                          text: "De ",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        TextSpan(text: "$dateStart - $timeStart "),
+                        const TextSpan(
+                          text: "à ",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(text: "$dateEnd - $timeEnd"),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
 
@@ -446,13 +441,47 @@ class PlanningCard extends StatelessWidget {
     );
   }
 }
-
-class TacheDetailDialog extends StatelessWidget {
+class TacheDetailDialog extends StatefulWidget {
+  TacheDetailDialog({super.key , required this.tache});
   final TachePlanning tache;
 
-  const TacheDetailDialog({super.key, required this.tache});
+  @override
+  State<TacheDetailDialog> createState() => TacheDetailDialogState();
+}
 
-  // Widget utilitaire pour afficher une ligne d'information
+class TacheDetailDialogState extends State<TacheDetailDialog> {
+  late TachePlanning tache;
+  ImageNote? description;
+  String status = "";
+  bool isLoading = true;
+
+  @override
+  initState() {
+    super.initState();
+    tache = widget.tache;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        description =
+        await BuildingRepository().getImageNoteRomm(
+            tache.roomId ?? "");
+       var  statusRes =
+        await BuildingRepository().getStatusRoom(
+            tache.roomId ?? "") ?? "";
+
+        setState(() {
+          status = mapStatusToLabel(statusRes);
+          isLoading = false;
+        });
+      }catch(e)
+             {
+               setState(() {
+                 isLoading = false;
+
+               });
+             }
+    });
+  }
+
   Widget _buildInfoRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -469,76 +498,114 @@ class TacheDetailDialog extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildPhotoGallery(String title, List<String> photoUrls) {
-    if (photoUrls.isEmpty) {
-      return Container();
+  String mapStatusToLabel(String status) {
+    switch (status) {
+      case 'clean':
+        return 'Terminé';
+      case 'dirty':
+        return 'Retard';
+      case 'in_progress':
+        return 'En cours';
+      case 'needs_attention':
+        return 'Faire attention';
+      default:
+        throw Exception('Statut inconnu: $status');
     }
-
+  }
+  Widget buildNoteSection(ImageNote note) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10.0),
+        const Text(
+          'Note',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+
+        // 📝 Texte de la note
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
           child: Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            note.text ?? "",
+            style: const TextStyle(fontSize: 14),
           ),
         ),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: photoUrls.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 10.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
+
+        const SizedBox(height: 12),
+
+        // 🖼️ Images
+       if(note.images != null ) if (note.images!.isNotEmpty) ...[
+          const Text(
+            'Images',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: note.images!.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final image = note.images![index];
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
                   child: Image.network(
-                    photoUrls[index], // Utilisation des URLs de photos
-                    width: 120,
-                    height: 120,
+                    image.imageUrl  ?? "",
+                    width: 100,
+                    height: 100,
                     fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        width: 120,
-                        height: 120,
-                        color: Colors.blueAccent.shade200,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: Center(child: CircularProgressIndicator()),
                       );
                     },
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 120,
-                      height: 120,
-                      color: Colors.red.shade100,
-                      child: const Center(
-                        child: Icon(Icons.broken_image, color: Colors.red),
-                      ),
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 100,
+                      height: 100,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.broken_image),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
+        ],
       ],
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final dtStart = DateTime.parse(tache.startDate != null ? tache.startDate.toString() : DateTime.now().toString());
+    final dtEnd = DateTime.parse(tache.endDate != null ? tache.endDate.toString() : DateTime.now().toString());
+
+    final dateStart =
+        "${dtStart.year}-${dtStart.month.toString().padLeft(2, '0')}-${dtStart.day.toString().padLeft(2, '0')}";
+    final dateEnd =
+        "${dtEnd.year}-${dtEnd.month.toString().padLeft(2, '0')}-${dtEnd.day.toString().padLeft(2, '0')}";
+    final timeStart =
+        "${dtStart.hour.toString().padLeft(2, '0')}:${dtStart.minute.toString().padLeft(2, '0')}";
+    final timeEnd =
+        "${dtEnd.hour.toString().padLeft(2, '0')}:${dtEnd.minute.toString().padLeft(2, '0')}";
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
         horizontal: 20.0,
         vertical: 24.0,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Container(
+      child: isLoading ? Loader() : Container(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -551,7 +618,7 @@ class TacheDetailDialog extends StatelessWidget {
                 Text(
                   'Détail Tâche: ${tache.room!.name}',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -561,9 +628,28 @@ class TacheDetailDialog extends StatelessWidget {
                 ),
               ],
             ),
-            const Divider(height: 20),
 
-            // --- Corps (Défilement) ---
+            RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black, // important sinon texte invisible
+                ),
+                children: [
+                  const TextSpan(
+                    text: "De ",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: "$dateStart - $timeStart "),
+                  const TextSpan(
+                    text: "à ",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: "$dateEnd - $timeEnd"),
+                ],
+              ),
+            ),
+            const Divider(height: 20),
             Flexible(
               child: SingleChildScrollView(
                 child: Column(
@@ -575,22 +661,12 @@ class TacheDetailDialog extends StatelessWidget {
                       "${tache.cleaner?.lastName} ${tache.cleaner?.firstName}",
                       Icons.person_outline,
                     ),
-                    _buildInfoRow(
-                      'Date',
-                      "${Utils.getOnlyDate(tache.startDate.toString())} - " +
-                          Utils.getOnlyDate(tache.endDate.toString()),
-                      Icons.calendar_today_outlined,
-                    ),
-                    _buildInfoRow(
-                      'Heure',
-                      Utils.getOnlyTime(tache.startDate.toString()),
-                      Icons.access_time,
-                    ),
-                    /*  _buildInfoRow(
+
+                      _buildInfoRow(
                       'Statut',
-                      tache.statut,
+                        status,
                       Icons.check_circle_outline,
-                    ),*/
+                    ),
                     const SizedBox(height: 15),
 
                     // Description
@@ -602,26 +678,7 @@ class TacheDetailDialog extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 5),
-                    /* Text(
-                      tache.description,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),*/
-                    const SizedBox(height: 20),
-
-                    // Photos Avant
-                    /*_buildPhotoGallery(
-                      'Photos Avant Nettoyage',
-                      tache.photosAvant,
-                    ),*/
-
-                    // Photos Après
-                    /*   _buildPhotoGallery(
-                      'Photos Après Nettoyage',
-                      tache.photosApres,
-                    ),*/
+                   if(description != null) buildNoteSection(description!)
                   ],
                 ),
               ),
@@ -736,15 +793,22 @@ class AjoutPlanningDialogState extends State<AjoutPlanningDialog> {
                     ..showSnackBar(
                       const SnackBar(content: Text('Assignation en cours...')),);
                 },
+                onLoading: (context, state) {
+                  LoadingDialog.show(context);
+                },
                 onSuccess: (context, state) {
+                  LoadingDialog.hide(context);
+
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(content: Text(state.successResponse!)),
                     );
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                 },
                 onFailure: (context, state) {
+                  LoadingDialog.hide(context);
+
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
@@ -896,7 +960,7 @@ class AjoutPlanningDialogState extends State<AjoutPlanningDialog> {
                       ),
                       const SizedBox(height: 15),
 
-                      // --- Note/Description ---
+
                       _buildLabel('Note'),
                       TextFieldBlocBuilder(
                         textFieldBloc: planningFormBloc.note,

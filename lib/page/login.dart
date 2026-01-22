@@ -61,10 +61,10 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Colors.transparent,
         resizeToAvoidBottomInset: true,
         body: Container(
-        decoration:   BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
               fit: BoxFit.cover,
-              image: AssetImage(Utils.getImagePath(DeliveryImage.background) ),
+              image: AssetImage(Utils.getImagePath(DeliveryImage.background)),
             ), // chemin de ton image
           ),
           height: MediaQuery.of(context).size.height,
@@ -103,7 +103,10 @@ class _LoginPageState extends State<LoginPage> {
               Utils.checkIsfirstCnx();
               Utils.isFirstCnx(true);
               LoadingDialog.hide(context);
-              context.router.replaceAll([HomeRoute()]);
+              if (Utils.getMe()?.userMetadata?.role == "admin")
+                context.router.replaceAll([HomeRoute()]);
+              else
+                context.router.replaceAll([HomeEmployeRoute()]);
               return;
             },
             onFailure: (context, state) {
@@ -155,74 +158,69 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-
 Widget _form(BuildContext context, LoginFormBloc loginFormBloc) {
   return Padding(
-      padding: const EdgeInsets.all(15.0),
-      child: Column(
-        children: [
-          TextFormControl(
-            textFieldBloc: loginFormBloc.username,
-            suffixButton: SuffixButton.asyncValidating,
-            keyboardType: TextInputType.emailAddress,
-            label: "Email",
-
-          ),
-          TextFormControl(
-            textFieldBloc: loginFormBloc.password,
-            suffixButton: SuffixButton.obscureText,
-            label: "Mot de passe",
-          ),
-          GestureDetector(
-            onTap: () {
-              loginFormBloc.stayConnect.updateValue(
-                !loginFormBloc.stayConnect.value,
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 150.sp,
-                  child: CheckboxFieldBlocBuilder(
-                    padding: const EdgeInsets.only(left: 0, right: 0),
-                    overlayColor: MaterialStateProperty.all<Color>(
-                      Colors.black,
-                    ),
-                    fillColor: MaterialStateProperty.all<Color>(Colors.grey),
-                    checkColor: MaterialStateProperty.all<Color>(Colors.white),
-                    side: BorderSide(color: Colors.black),
-                    textColor: MaterialStateProperty.all<Color>(Colors.white),
-                    booleanFieldBloc: loginFormBloc.stayConnect,
-                    controlAffinity: FieldBlocBuilderControlAffinity.leading,
-                    body: Padding(
-                      padding: const EdgeInsets.only(left: 0.0),
-                      child: Text(
-                        'Rester connecté',
-                        style: GoogleFonts.inter(fontSize: 10),
-                      ),
+    padding: const EdgeInsets.all(15.0),
+    child: Column(
+      children: [
+        TextFormControl(
+          textFieldBloc: loginFormBloc.username,
+          suffixButton: SuffixButton.asyncValidating,
+          keyboardType: TextInputType.emailAddress,
+          label: "Email",
+        ),
+        TextFormControl(
+          textFieldBloc: loginFormBloc.password,
+          suffixButton: SuffixButton.obscureText,
+          label: "Mot de passe",
+        ),
+        GestureDetector(
+          onTap: () {
+            loginFormBloc.stayConnect.updateValue(
+              !loginFormBloc.stayConnect.value,
+            );
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 150.sp,
+                child: CheckboxFieldBlocBuilder(
+                  padding: const EdgeInsets.only(left: 0, right: 0),
+                  overlayColor: MaterialStateProperty.all<Color>(Colors.black),
+                  fillColor: MaterialStateProperty.all<Color>(Colors.grey),
+                  checkColor: MaterialStateProperty.all<Color>(Colors.white),
+                  side: BorderSide(color: Colors.black),
+                  textColor: MaterialStateProperty.all<Color>(Colors.white),
+                  booleanFieldBloc: loginFormBloc.stayConnect,
+                  controlAffinity: FieldBlocBuilderControlAffinity.leading,
+                  body: Padding(
+                    padding: const EdgeInsets.only(left: 0.0),
+                    child: Text(
+                      'Rester connecté',
+                      style: GoogleFonts.inter(fontSize: 10),
                     ),
                   ),
                 ),
-
-              ],
-            ),
+              ),
+            ],
           ),
-          RowSpacer(),
-          FormButton(
-            labelColor: Colors.white,
-            width: double.infinity,
-            onPressed: () async {
-              loginFormBloc.submit();
-            },
-            primary: DeliveryColors.blue,
-            radius: 15,
-            label: 'Connexion',
-          ),
+        ),
+        RowSpacer(),
+        FormButton(
+          labelColor: Colors.white,
+          width: double.infinity,
+          onPressed: () async {
+            loginFormBloc.submit();
+          },
+          primary: DeliveryColors.blue,
+          radius: 15,
+          label: 'Connexion',
+        ),
 
-          RowSpacer(),
-        ],
-      ),
+        RowSpacer(),
+      ],
+    ),
   );
 }

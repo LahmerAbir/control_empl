@@ -1,12 +1,15 @@
+import 'package:control_empl/model/planning_cleaner.dart';
 import 'package:control_empl/model/tache.dart';
 import 'package:control_empl/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 
+import '../../repository/building_repository.dart';
+import '../../ui/common/loading.dart';
+import '../../utils/utils.dart';
 import '../appartemennt/appartement.dart';
 import '../employe/employe.dart';
 import '../taches/tache.dart';
-
 
 @RoutePage()
 class HomeEmployePage extends StatefulWidget {
@@ -17,28 +20,46 @@ class HomeEmployePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomeEmployePage> {
+  List<PlanningCleaner> tacheList = [];
+  bool isLoading = true;
 
+  @override
+  initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        tacheList =
+            await BuildingRepository().getTachesByCleaner(Utils.me?.id ?? "") ??
+            [];
+        setState(() {
+          isLoading = false;
+        });
+      } catch (e) {
+        print("exception $e");
+        setState(() {
+          isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor : Colors.white,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Padding(
-          padding: const EdgeInsets.only(top :20.0),
+          padding: const EdgeInsets.only(top: 20.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
-              Icon(Icons.person , size: 20,),
+              Icon(Icons.person, size: 20),
               const Text(
                 'Bonjour Lahmer Abir',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 22,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
               ),
-              Icon(Icons.logout , size: 20,)
+              Icon(Icons.logout, size: 20),
             ],
           ),
         ),
@@ -49,14 +70,16 @@ class _HomePageState extends State<HomeEmployePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: DashboardContent(),
+        child: isLoading ? Loader() : DashboardContent(tacheList: tacheList),
       ),
     );
   }
 }
 
 class DashboardContent extends StatelessWidget {
-  const DashboardContent({super.key});
+  DashboardContent({super.key, required this.tacheList});
+
+  List<PlanningCleaner> tacheList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -94,20 +117,34 @@ class DashboardContent extends StatelessWidget {
       mainAxisSpacing: 12.0,
       childAspectRatio: 1.5,
       children: <Widget>[
-        _buildInfoCard('Tâches d\'aujoud\'hui', '3', Icons.today, Colors.blue),
-        _buildInfoCard('Tâches en attente', '10', Icons.access_time_outlined, Colors.blue),
-        _buildInfoCard('Tâches encours', '1', Icons.group_work_outlined, Colors.blue),
-        _buildInfoCard('Tâches Terminés', '5', Icons.check_circle, Colors.blue),
+        _buildInfoCard('Tâches d\'aujoud\'hui', tacheList.length.toString(), Icons.today, Colors.blue),
+        _buildInfoCard(
+          'Tâches en attente',
+          tacheList.length.toString(),
+          Icons.access_time_outlined,
+          Colors.blue,
+        ),
+        _buildInfoCard(
+          'Tâches encours',
+          tacheList.length.toString(),
+
+          Icons.group_work_outlined,
+          Colors.blue,
+        ),
+        _buildInfoCard('Tâches Terminés', tacheList.length.toString(), Icons.check_circle, Colors.blue),
       ],
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon, Color color) {
+  Widget _buildInfoCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -116,10 +153,7 @@ class DashboardContent extends StatelessWidget {
           children: <Widget>[
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -131,11 +165,7 @@ class DashboardContent extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Icon(
-                  icon,
-                  color: color,
-                  size: 25,
-                ),
+                Icon(icon, color: color, size: 25),
               ],
             ),
           ],
@@ -145,67 +175,59 @@ class DashboardContent extends StatelessWidget {
   }
 
   Widget _buildRecentActivityList() {
-    final List<TachePlanning> activities = [
-     /* TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Encours'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Encours'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Encours'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Terminé'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Terminé'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Terminé'),
-      TachePlanning(numeroAppartement: 'Appartement 101', employe: 'Abir lahmer',heure :'Il y a 2h',  date: '16/11/2025', statut: 'Terminé'),*/
-    ];
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: ListView.separated(
+    return  ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: activities.length,
+        itemCount: tacheList.length,
         separatorBuilder: (context, index) => const Divider(
           height: 1,
           indent: 16,
           endIndent: 16,
-          color: Color(0xFFF0F0F0),
+          color: Colors.white,
         ),
         itemBuilder: (context, index) {
-          final activity = activities[index];
+          final activity = tacheList[index];
           return GestureDetector(
-            onTap: (){
-              context.router.push(ModifierTacheRoute(tache: activities[index]));
-
+            onTap: () {
+              context.router.push(ModifierTacheRoute(tache: tacheList[index]));
             },
             child: _buildActivityItem(
-           ""  ,// activity.numeroAppartement!,
-            ""  ,//activity.employe,
-            "" ,// activity.date,
-           ""   //activity.statut,
+              context,
+              activity.building?.name ?? "",
+              activity.room?.name ?? "",
+              activity.startDate ?? "",
+              activity.endDate ?? "",
             ),
           );
         },
-      ),
+
     );
   }
 
-  Widget _buildActivityItem(String logement, String personne, String temps, String statut) {
-    Color statusColor;
-    switch (statut) {
-      case 'Terminé':
-        statusColor = Colors.blue.shade700;
-        break;
-      case 'En cours':
-        statusColor = Colors.green.shade700;
-        break;
-      case 'Planifié':
-        statusColor = Colors.grey.shade500;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
+  Widget _buildActivityItem(
+      BuildContext context ,
+    String batiment,
+    String room,
+    String startDate,
+    String endDate,
+  ) {
+    final dtStart = DateTime.parse(startDate);
+    final dtEnd = DateTime.parse(endDate);
 
-    return Padding(
+    final dateStart =
+        "${dtStart.year}-${dtStart.month.toString().padLeft(2, '0')}-${dtStart.day.toString().padLeft(2, '0')}";
+    final dateEnd =
+        "${dtEnd.year}-${dtEnd.month.toString().padLeft(2, '0')}-${dtEnd.day.toString().padLeft(2, '0')}";
+    final timeStart =
+        "${dtStart.hour.toString().padLeft(2, '0')}:${dtStart.minute.toString().padLeft(2, '0')}";
+    final timeEnd =
+        "${dtEnd.hour.toString().padLeft(2, '0')}:${dtEnd.minute.toString().padLeft(2, '0')}";
+
+
+    return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -215,52 +237,47 @@ class DashboardContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  logement,
+                  batiment,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
-              ],
+                Text(room, style: const TextStyle(fontSize: 14 , color: Colors.blueAccent)),
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black, // important sinon texte invisible
+                    ),
+                    children: [
+                      const TextSpan(
+                        text: "De ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: "$dateStart - $timeStart "),
+                      const TextSpan(
+                        text: "à ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: "$dateEnd - $timeEnd"),
+                    ],
+                  ),
+                ),              ],
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Text(
-              temps,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+          IconButton(
+            icon: Icon(
+              Icons.remove_red_eye_outlined,
+              color: Colors.blue.shade600,
+              size: 25,
             ),
-          ),
-
-          SizedBox(
-            width: 80,
-            child: ElevatedButton(
-              onPressed: null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: statusColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                statut,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            onPressed: () {}
+            ,
           ),
         ],
       ),
-    );
+        ));
   }
 }

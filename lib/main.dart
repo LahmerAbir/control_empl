@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:control_empl/blocs/appartement_form_bloc.dart';
 import 'package:control_empl/blocs/employe_form_bloc.dart';
 import 'package:control_empl/blocs/login_form_bloc.dart';
+import 'package:control_empl/blocs/tache_form_bloc.dart';
 import 'package:control_empl/repository/auth_repository.dart';
 import 'package:control_empl/router/app_router.dart';
 import 'package:control_empl/router/app_router_observer.dart';
@@ -72,6 +73,9 @@ class CleanApp extends ConsumerWidget {
               BlocProvider<EmployeFormBloc>(
                   create: (BuildContext context) =>
                       EmployeFormBloc()),
+              BlocProvider<TacheFormBloc>(
+                  create: (BuildContext context) =>
+                      TacheFormBloc()),
             ],
             child: ref.watch(repositoryInitializerProvider).when(
                 error: (error, _) => Container(),

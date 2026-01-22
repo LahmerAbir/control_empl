@@ -182,6 +182,8 @@ class _LogementsScreenState extends State<LogementsScreen> {
       ),
     );
   }
+
+
   void showLogementDialog(BuildContext context) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) =>  LogementDialog()),
@@ -201,8 +203,6 @@ class _LogementsScreenState extends State<LogementsScreen> {
       });
     }
   }
-
-
 }
 
 class LogementDialog extends StatelessWidget {
