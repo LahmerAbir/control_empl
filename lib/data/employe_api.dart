@@ -43,7 +43,7 @@ class EmployeApi {
           "first_name": firstName,
           "phone": phone,
           "last_name": lastName,
-          "role": "admin"
+          "role": "cleaner"
 
       }
       ).catchError((onError) {

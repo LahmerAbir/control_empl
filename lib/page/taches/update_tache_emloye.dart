@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:control_empl/ui/common/loading_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -71,6 +72,7 @@ class _ModifierTachePageState extends State<ModifierTachePage> {
     }
   }
   Future<void> _marquerTermine() async {
+    LoadingDialog.show(context);
     if (_noteController.text.trim().isEmpty) {
       setState(() {
         _noteError = true;
@@ -94,6 +96,7 @@ class _ModifierTachePageState extends State<ModifierTachePage> {
     await BuildingRepository().addImagesRoom(noteId , base64Image2 ,fileName2);
     final updated = _currentTache.copyWith(status: 'Terminée');
     setState(() => _currentTache = updated);
+    LoadingDialog.hide(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Tâche terminée avec note et photos')),

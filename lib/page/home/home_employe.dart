@@ -59,7 +59,12 @@ class _HomePageState extends State<HomeEmployePage> {
                 'Bonjour Lahmer Abir',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
               ),
-              Icon(Icons.logout, size: 20),
+              GestureDetector(onTap : (){
+                Utils.setMe(null);
+                Utils.setToken(null);
+                context.router.replaceAll([LoginRoute()]);
+              },child: Icon(Icons.logout, size: 20)),
+
             ],
           ),
         ),
@@ -92,14 +97,14 @@ class DashboardContent extends StatelessWidget {
           children: <Widget>[
             _buildSummaryCards(),
             const SizedBox(height: 20),
-            const Text(
+            tacheList.isNotEmpty  ?   const Text(
               'Activité récente',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF333333),
               ),
-            ),
+            )   :   Container(),
             const SizedBox(height: 10),
             _buildRecentActivityList(),
           ],
