@@ -34,8 +34,6 @@ abstract class _$AppRouter extends RootStackRouter {
         routeData: routeData,
         child: LoginPage(
           key: args.key,
-          onSuccess: args.onSuccess,
-          padding: args.padding,
         ),
       );
     },

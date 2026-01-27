@@ -1,42 +1,83 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:control_empl/repository/building_repository.dart';
-import 'package:flutter_form_bloc/flutter_form_bloc.dart';
 
-import '../utils/utils.dart';
+enum AppartementFormStatus { initial, loading, success, failure }
 
-class AppartementFormBloc extends FormBloc<String, String> {
-  final nomLogement = TextFieldBloc(validators: [Utils.required]);
+class AppartementFormState {
+  final String nomLogement;
+  final String description;
+  final String idBuilding;
+  final AppartementFormStatus status;
+  final String? errorMessage;
 
-  final description = TextFieldBloc(validators: [Utils.required]);
+  AppartementFormState({
+    this.nomLogement = '',
+    this.description = '',
+    this.idBuilding = '',
+    this.status = AppartementFormStatus.initial,
+    this.errorMessage,
+  });
 
+  AppartementFormState copyWith({
+    String? nomLogement,
+    String? description,
+    String? idBuilding,
+    AppartementFormStatus? status,
+    String? errorMessage,
+  }) {
+    return AppartementFormState(
+      nomLogement: nomLogement ?? this.nomLogement,
+      description: description ?? this.description,
+      idBuilding: idBuilding ?? this.idBuilding,
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
 
-  final TextFieldBloc<String> buildingIdField =
-  TextFieldBloc(name: 'building_id');
-  AppartementFormBloc({ String? buildingId,}) {
-    buildingIdField.updateValue(buildingId ?? "");
-    addFieldBlocs(fieldBlocs: [nomLogement, description , buildingIdField]);
+class AppartementFormBloc extends Cubit<AppartementFormState> {
+  AppartementFormBloc({String? idBuilding})
+      : super(AppartementFormState(idBuilding: idBuilding ?? ''));
+
+  void onNomLogementChanged(String value) {
+    emit(state.copyWith(nomLogement: value, status: AppartementFormStatus.initial));
   }
 
-  @override
-  void onSubmitting() async {
-    emitLoading();
+  void onDescriptionChanged(String value) {
+    emit(state.copyWith(description: value, status: AppartementFormStatus.initial));
+  }
+
+  Future<void> submit() async {
+    if (state.nomLogement.isEmpty || state.description.isEmpty) {
+      emit(state.copyWith(
+        status: AppartementFormStatus.failure,
+        errorMessage: 'Tous les champs sont requis',
+      ));
+      return;
+    }
+
+    emit(state.copyWith(status: AppartementFormStatus.loading));
 
     try {
-      var res = await BuildingRepository().addRommbyBuilding(
-       Utils.idBuilding ?? "",
-
-        name: nomLogement.value,
-        description: description.value,
+      final res = await BuildingRepository().addRommbyBuilding(
+        state.idBuilding,
+        name: state.nomLogement,
+        description: state.description,
       );
+
       if (res == true) {
-        emitSuccess(
-          canSubmitAgain: true,
-          successResponse: 'Appartement ajouté avec succès !',
-        );
+        emit(state.copyWith(status: AppartementFormStatus.success));
       } else {
-        emitFailure();
+        emit(state.copyWith(
+          status: AppartementFormStatus.failure,
+          errorMessage: 'Erreur lors de l\'ajout de l\'appartement',
+        ));
       }
     } catch (e) {
-      emitFailure();
+      emit(state.copyWith(
+        status: AppartementFormStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 }
