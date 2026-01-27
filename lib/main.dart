@@ -70,7 +70,12 @@ class CleanApp extends ConsumerWidget {
               BlocProvider<AppartementFormBloc>(
                   create: (BuildContext context) =>
                       AppartementFormBloc()),
-
+                BlocProvider<EmployeFormBloc>(
+                  create: (BuildContext context) =>
+                      EmployeFormBloc()),
+              BlocProvider<TacheFormBloc>(
+                  create: (BuildContext context) =>
+                      TacheFormBloc()),
             ],
             child: ref.watch(repositoryInitializerProvider).when(
                 error: (error, _) => Container(),

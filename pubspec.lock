@@ -345,10 +345,9 @@ packages:
   flutter_form_bloc:
     dependency: "direct main"
     description:
-      name: flutter_form_bloc
-      sha256: a4e81b7cc1a3a72eb5ec3a597fc1fe4cd4f612811ca8ef7eba5b3d702c4d119f
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_form_bloc-0.31.0"
+      relative: true
+    source: path
     version: "0.31.0"
   flutter_keyboard_visibility:
     dependency: transitive
