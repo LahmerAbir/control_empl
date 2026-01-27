@@ -1,8 +1,7 @@
 import 'package:control_empl/model/employe.dart';
 import 'package:control_empl/repository/employe_repository.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_form_bloc/flutter_form_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/employe_form_bloc.dart';
 import '../../ui/common/loading.dart';
@@ -17,24 +16,25 @@ class EquipeScreen extends StatefulWidget {
 
 class _EquipeScreenState extends State<EquipeScreen> {
   List<Employe> equipe = [];
-
   List<Employe> _filteredEquipe = [];
   bool isLoading = true;
-
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _loadData();
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      equipe = await EmployeRepository().getUsers() ?? [];
+  Future<void> _loadData() async {
+    equipe = await EmployeRepository().getUsers() ?? [];
+    if (mounted) {
       setState(() {
         isLoading = false;
         _filteredEquipe = equipe;
         _searchController.addListener(_filterEquipe);
       });
-    });
+    }
   }
 
   @override
@@ -46,18 +46,14 @@ class _EquipeScreenState extends State<EquipeScreen> {
 
   void _filterEquipe() {
     final query = _searchController.text.toLowerCase();
-
     setState(() {
       if (query.isEmpty) {
         _filteredEquipe = equipe;
       } else {
         _filteredEquipe = equipe.where((membre) {
-          final nomComplet = membre.firstname != null
-              ? membre.firstname?.toLowerCase()
-              : "";
-          final email = membre.email != null ? membre.email?.toLowerCase() : "";
-
-          return nomComplet!.contains(query) || email!.contains(query);
+          final nomComplet = membre.firstname?.toLowerCase() ?? "";
+          final email = membre.email?.toLowerCase() ?? "";
+          return nomComplet.contains(query) || email.contains(query);
         }).toList();
       }
     });
@@ -68,18 +64,9 @@ class _EquipeScreenState extends State<EquipeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Les employés',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-                color: Colors.black,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Les employés',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.black),
         ),
         actions: [
           Padding(
@@ -87,15 +74,10 @@ class _EquipeScreenState extends State<EquipeScreen> {
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
               child: IconButton(
                 icon: const Icon(Icons.add, color: Colors.white),
-                onPressed: () {
-                  showEmployeDialog(context);
-                },
+                onPressed: () => showEmployeDialog(context),
               ),
             ),
           ),
@@ -105,241 +87,79 @@ class _EquipeScreenState extends State<EquipeScreen> {
         elevation: 0,
         toolbarHeight: 80,
       ),
-
       body: isLoading
-          ? Loader()
+          ? const Loader()
           : equipe.isNotEmpty
-          ? SizedBox(
-              height: MediaQuery.of(context).size.height,
-
-              child: SingleChildScrollView(
-                child: Column(
+              ? Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6.0,
-                        vertical: 3.0,
-                      ),
+                      padding: const EdgeInsets.all(16.0),
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
-                          hintText: 'Rechercher par nom ou email...',
+                          hintText: 'Rechercher...',
                           prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
                           filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 10.0,
-                          ),
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                         ),
                       ),
                     ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.6,
+                    Expanded(
                       child: _filteredEquipe.isEmpty
-                          ? Center(child: Text("Liste vide"))
+                          ? const Center(child: Text("Liste vide"))
                           : ListView.builder(
-                              padding: const EdgeInsets.all(10.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: _filteredEquipe.length,
-                              itemBuilder: (context, index) {
-                                final membre = _filteredEquipe[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 20.0),
-                                  child: MembreCard(context, membre: membre),
-                                );
-                              },
+                              itemBuilder: (context, index) => MembreCard(membre: _filteredEquipe[index]),
                             ),
                     ),
                   ],
-                ),
-              ),
-            )
-          : Center(child: Text("Liste est vide")),
+                )
+              : const Center(child: Text("Liste est vide")),
     );
   }
 
   void showEmployeDialog(BuildContext context) async {
-    final result = await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => EmployeDialog()));
-
-    if (result == true) {
-      setState(() {
-        isLoading = true;
-      });
-      equipe = await EmployeRepository().getUsers() ?? [];
-      setState(() {
-        isLoading = false;
-        _filteredEquipe = equipe;
-        _searchController.addListener(_filterEquipe);
-      });
-    }
-  }
-
-  Widget MembreCard(BuildContext context, {required Employe membre}) {
-    Map<String, dynamic> _getStatusStyle(String statut) {
-      switch (statut) {
-        case 'Disponible':
-          return {'couleurTexte': Colors.white, 'couleurFond': Colors.black};
-        case 'Occupé':
-          return {
-            'couleurTexte': Colors.black,
-            'couleurFond': Colors.grey.shade200,
-          };
-        case 'En pause':
-          return {
-            'couleurTexte': Colors.white,
-            'couleurFond': Colors.orange.shade700,
-          };
-        default:
-          return {
-            'couleurTexte': Colors.black,
-            'couleurFond': Colors.grey.shade200,
-          };
-      }
-    }
-
-    return GestureDetector(
-      onTap: () {
-        showModifierEmployeDialog(context, membre);
-      },
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _buildAvatar(membre.initiales ?? ""),
-                      const SizedBox(width: 12),
-
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            "${membre.lastname ?? "-"} ${membre.firstname ?? "-"}",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 0),
-                          /* Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusStyle['couleurFond'],
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              membre.statut ?? "",
-                              style: TextStyle(
-                                color: statusStyle['couleurTexte'],
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),*/
-                        ],
-                      ),
-                      const SizedBox(width: 30),
-                    ],
-                  ),
-                  Icon(Icons.edit, color: Colors.grey.shade600, size: 20),
-                ],
-              ),
-
-              const SizedBox(height: 15),
-
-              if (membre.email != null)
-                _buildContactRow(Icons.mail_outline, membre.email ?? "-"),
-              const SizedBox(height: 5),
-              if (membre.telephone != null)
-                _buildContactRow(Icons.phone_outlined, membre.telephone ?? "-"),
-            ],
-          ),
-        ),
+    final result = await showDialog(
+      context: context,
+      builder: (context) => BlocProvider(
+        create: (context) => EmployeFormBloc(),
+        child: const EmployeDialog(),
       ),
     );
+    if (result == true) _loadData();
   }
 
-  void showModifierEmployeDialog(
-    BuildContext context,
-    Employe employeAModifier,
-  ) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => BlocProvider(
-          create: (_) => ModifierEmployeFormBloc(employeAModifier),
-          child: ModifierEmployeDialog(employe: employeAModifier),
-        ),
+  void showModifierEmployeDialog(BuildContext context, Employe employe) async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => BlocProvider(
+        create: (context) => ModifierEmployeFormBloc(employe),
+        child: ModifierEmployeDialog(employe: employe),
       ),
     );
-    print("RESULT = $result");
-
-    if (result == true) {
-      print("test testttt");
-      setState(() {
-        isLoading = true;
-      });
-      var data = await EmployeRepository().getUsers() ?? [];
-      setState(() {
-        isLoading = false;
-        equipe = data;
-        _filteredEquipe = equipe;
-      });
-    }
+    if (result == true) _loadData();
   }
 
-  Widget _buildAvatar(String initials) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.blue.shade100,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: TextStyle(
-            color: Colors.blue.shade700,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+
+  Widget MembreCard({required Employe membre}) {
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        onTap: () => showModifierEmployeDialog(context, membre),
+        leading: CircleAvatar(child: Text(membre.initiales ?? "")),
+        title: Text("${membre.lastname ?? ""} ${membre.firstname ?? ""}"),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(membre.email ?? ""),
+            Text(membre.telephone ?? ""),
+          ],
         ),
+        trailing: const Icon(Icons.edit, size: 20),
       ),
-    );
-  }
-
-  Widget _buildContactRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey.shade600, size: 20),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(color: Colors.grey.shade800, fontSize: 14)),
-      ],
     );
   }
 }
@@ -347,347 +167,157 @@ class _EquipeScreenState extends State<EquipeScreen> {
 class EmployeDialog extends StatelessWidget {
   const EmployeDialog({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final employeFormBloc = context.read<EmployeFormBloc>();
-
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 10.0,
-        vertical: 10.0,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: SingleChildScrollView(
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.9,
-          child: Container(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Ajouter un employé',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                FormBlocListener<EmployeFormBloc, String, String>(
-                  onSubmitting: (context, state) {
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        const SnackBar(content: Text('Soumission en cours...')),
-                      );
-                  },
-                  onLoading: (context, state) {
-                    LoadingDialog.show(context);
-                  },
-                  onSuccess: (context, state) {
-                    LoadingDialog.hide(context);
-
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(content: Text(state.successResponse!)),
-                      );
-                    Navigator.of(context).pop(true);
-                  },
-                  onFailure: (context, state) {
-                    LoadingDialog.hide(context);
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(content: Text("Une erreur s'est produite")),
-                      );
-                    Navigator.of(context).pop();
-                  },
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Nom'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.firstName,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildLabel('Prénom'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.lastName,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildLabel('Email'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.email,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildLabel('Téléphone'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.telephone,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildLabel('Mot de passe'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.motDePasse,
-                          obscureText: true, // Masquer le texte
-                          decoration: const InputDecoration(
-                            hintText: '******',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 40,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: employeFormBloc.submit,
-                    child: const Text(
-                      'Ajouter',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<EmployeFormBloc, EmployeFormState>(
+      listener: (context, state) {
+        if (state.status == EmployeFormStatus.loading) {
+          LoadingDialog.show(context);
+        } else if (state.status == EmployeFormStatus.success) {
+          LoadingDialog.hide(context);
+          Navigator.pop(context, true);
+        } else if (state.status == EmployeFormStatus.failure) {
+          LoadingDialog.hide(context);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.responseMessage ?? 'Erreur')));
+        }
+      },
+      child: Builder(builder: (context) {
+        final bloc = context.read<EmployeFormBloc>();
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Ajouter un employé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextField(decoration: _inputDecoration('Nom'), onChanged: bloc.onFirstNameChanged),
+                  const SizedBox(height: 12),
+                  TextField(decoration: _inputDecoration('Prénom'), onChanged: bloc.onLastNameChanged),
+                  const SizedBox(height: 12),
+                  TextField(decoration: _inputDecoration('Email'), onChanged: bloc.onEmailChanged),
+                  const SizedBox(height: 12),
+                  TextField(decoration: _inputDecoration('Téléphone'), onChanged: bloc.onTelephoneChanged),
+                  const SizedBox(height: 12),
+                  TextField(decoration: _inputDecoration('Mot de passe'), obscureText: true, onChanged: bloc.onMotDePasseChanged),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: bloc.submit,
+                      child: const Text('Ajouter'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
 
 class ModifierEmployeDialog extends StatelessWidget {
-  ModifierEmployeDialog({super.key, required this.employe});
+  final Employe employe;
+  const ModifierEmployeDialog({super.key, required this.employe});
 
-  Employe employe;
-
-  @override
-  Widget build(BuildContext context) {
-    final employeFormBloc = context.read<ModifierEmployeFormBloc>();
-
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 10.0,
-        vertical: 10.0,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: SingleChildScrollView(
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.9,
-          child: Container(
-            padding: const EdgeInsets.all(10.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Modifier un employé', // TITRE MIS À JOUR
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(true),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                FormBlocListener<ModifierEmployeFormBloc, String, String>(
-                  onSubmitting: (context, state) async {
-                    LoadingDialog.show(context);
-                    var res = await EmployeRepository().editUsers(
-                      employe.id ?? "",
-                      phone: employeFormBloc.telephone.value,
-                      email: employeFormBloc.email.value,
-                      password: employeFormBloc.motDePasse.value,
-                      firstName: employeFormBloc.firstName.value,
-                      lastName: employeFormBloc.lastName.value,
-                      role: "admin",
-                    );
-                    if (res == true) {
-                      print("success");
-                      employeFormBloc.emitSuccess();
-                    } else {
-                      print("failler");
-                      employeFormBloc.emitFailure();
-                    }
-                  },
-                  onSuccess: (context, state) {
-                    print("success 2");
-
-                    LoadingDialog.hide(context);
-                    Navigator.of(context).pop(true);
-
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(
-                          content: Text('Employé modifié avec succès !'),
-                        ),
-                      );
-                  },
-                  onFailure: (context, state) {
-                    LoadingDialog.hide(context);
-
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Erreur lors de la modification de l\'employé',
-                          ),
-                        ),
-                      );
-                  },
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Nom'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.firstName,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildLabel('Prénom'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.lastName,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildLabel('Email'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.email,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildLabel('Téléphone'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.telephone,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildLabel('Mot de passe (Laisser vide si inchangé)'),
-                        TextFieldBlocBuilder(
-                          textFieldBloc: employeFormBloc.motDePasse,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            hintText: 'Nouveau mot de passe',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: employeFormBloc.submit,
-                    child: const Text(
-                      'Enregistrer',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<ModifierEmployeFormBloc, EmployeFormState>(
+      listener: (context, state) {
+        if (state.status == EmployeFormStatus.loading) {
+          LoadingDialog.show(context);
+        } else if (state.status == EmployeFormStatus.success) {
+          LoadingDialog.hide(context);
+          Navigator.pop(context, true);
+        } else if (state.status == EmployeFormStatus.failure) {
+          LoadingDialog.hide(context);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.responseMessage ?? 'Erreur')));
+        }
+      },
+      child: Builder(builder: (context) {
+        final bloc = context.read<ModifierEmployeFormBloc>();
+        final state = context.watch<ModifierEmployeFormBloc>().state;
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Modifier un employé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: _inputDecoration('Nom'),
+                    onChanged: bloc.onFirstNameChanged,
+                    controller: TextEditingController(text: state.firstName)..selection = TextSelection.collapsed(offset: state.firstName.length),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: _inputDecoration('Prénom'),
+                    onChanged: bloc.onLastNameChanged,
+                    controller: TextEditingController(text: state.lastName)..selection = TextSelection.collapsed(offset: state.lastName.length),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: _inputDecoration('Email'),
+                    onChanged: bloc.onEmailChanged,
+                    controller: TextEditingController(text: state.email)..selection = TextSelection.collapsed(offset: state.email.length),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: _inputDecoration('Téléphone'),
+                    onChanged: bloc.onTelephoneChanged,
+                    controller: TextEditingController(text: state.telephone)..selection = TextSelection.collapsed(offset: state.telephone.length),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(decoration: _inputDecoration('Nouveau mot de passe'), obscureText: true, onChanged: bloc.onMotDePasseChanged),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: bloc.submit,
+                      child: const Text('Enregistrer'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }

@@ -12,6 +12,7 @@ class LogementsScreen extends StatefulWidget {
 
   final String selectedBuildingId;
 
+
   @override
   State<LogementsScreen> createState() => _LogementsScreenState();
 }
@@ -92,7 +93,6 @@ class _LogementsScreenState extends State<LogementsScreen> {
           : logements.isNotEmpty
           ? Column(
               children: [
-                // Filters...
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
@@ -117,12 +117,22 @@ class _LogementsScreenState extends State<LogementsScreen> {
           child: const LogementDialog(),
         );
       },
-    ).then((_) => _fetchLogements());
+    ).then((value) {
+      if (value == true) _fetchLogements();
+    });
   }
 }
 
 class LogementDialog extends StatelessWidget {
   const LogementDialog({super.key});
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,32 +156,49 @@ class LogementDialog extends StatelessWidget {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Ajouter un Appartement',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Ajouter un Appartement',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextField(
-                decoration: const InputDecoration(labelText: 'Nom du Appartement'),
+                decoration: _inputDecoration('Nom du Appartement'),
                 onChanged: (value) => context.read<AppartementFormBloc>().onNomLogementChanged(value),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
               TextField(
-                decoration: const InputDecoration(labelText: 'Description'),
+                decoration: _inputDecoration('Description'),
+                maxLines: 3,
                 onChanged: (value) => context.read<AppartementFormBloc>().onDescriptionChanged(value),
               ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
+                height: 45,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   onPressed: () => context.read<AppartementFormBloc>().submit(),
-                  child: const Text('Ajouter', style: TextStyle(color: Colors.white)),
+                  child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -189,9 +216,11 @@ class LogementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         title: Text(logement.name ?? ""),
         subtitle: Text(logement.roomType ?? ""),
+        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }

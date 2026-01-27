@@ -1,131 +1,99 @@
-import 'package:control_empl/model/appartement.dart';
-import 'package:control_empl/model/employe.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_form_bloc/flutter_form_bloc.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';import '../../repository/building_repository.dart';
+import '../../utils/utils.dart';
 
-import '../repository/building_repository.dart';
-import '../repository/employe_repository.dart';
-import '../utils/utils.dart';
+enum TaskFormStatus { initial, loading, success, failure }
 
-class TacheFormBloc extends FormBloc<String, String> {
-  final employe = SelectFieldBloc<Employe, dynamic>(  validators: [FieldBlocValidators.required],
+class TaskFormState {
+  final String? employeId;
+  final String? appartementId;
+  final DateTime? date;
+  final TimeOfDay heureDebut;
+  final TimeOfDay heureFin;
+  final String note;
+  final TaskFormStatus status;
+  final String? errorMessage;
 
-  );
+  TaskFormState({
+    this.employeId,
+    this.appartementId,
+    this.date,
+    this.heureDebut = const TimeOfDay(hour: 12, minute: 30),
+    this.heureFin = const TimeOfDay(hour: 12, minute: 30),
+    this.note = '',
+    this.status = TaskFormStatus.initial,
+    this.errorMessage,
+  });
 
-  final appartement = SelectFieldBloc<Appartement, dynamic>(
-      validators: [FieldBlocValidators.required]  );
-
-  final date = InputFieldBloc<DateTime?, dynamic>(
-    validators: [(value) => value == null ? 'Veuillez sélectionner une date.' : null],
-    initialValue: null,
-  );
-
-  final heureDebut = InputFieldBloc<TimeOfDay?, dynamic>(
-    validators: [(value) => value == null ? 'Veuillez sélectionner une heure de début.' : null],
-    initialValue: TimeOfDay(hour: 12, minute: 30),
-  );
-
-  final heureFin = InputFieldBloc<TimeOfDay?, dynamic>(
-    validators: [(value) => value == null ? 'Veuillez sélectionner une heure de fin.' : null],
-    initialValue: TimeOfDay(hour: 12, minute: 30),
-  );
-
-  final note = TextFieldBloc();
-
-  TacheFormBloc() {
-    addFieldBlocs(
-      fieldBlocs: [
-        employe,
-        appartement,
-        date,
-        heureDebut,
-        heureFin,
-        note,
-      ],
+  TaskFormState copyWith({
+    String? employeId,
+    String? appartementId,
+    DateTime? date,
+    TimeOfDay? heureDebut,
+    TimeOfDay? heureFin,
+    String? note,
+    TaskFormStatus? status,
+    String? errorMessage,
+  }) {
+    return TaskFormState(
+      employeId: employeId ?? this.employeId,
+      appartementId: appartementId ?? this.appartementId,
+      date: date ?? this.date,
+      heureDebut: heureDebut ?? this.heureDebut,
+      heureFin: heureFin ?? this.heureFin,
+      note: note ?? this.note,
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
     );
-    _loadUsers();
-    _loadApp();
-
   }
-  Future<void> _loadUsers() async {
-    try {
-      emitLoading();
-      final list = await  await EmployeRepository().getUsers();
+}
 
-      employe.updateItems(list ?? []);
-    } catch (e) {
-      emitFailure(failureResponse: "Erreur chargement utilisateur");
+class TaskFormBloc extends Cubit<TaskFormState> {
+  TaskFormBloc() : super(TaskFormState());
+
+  void updateEmploye(String? value) => emit(state.copyWith(employeId: value, status: TaskFormStatus.initial));
+  void updateAppartement(String? value) => emit(state.copyWith(appartementId: value, status: TaskFormStatus.initial));
+  void updateDate(DateTime? value) => emit(state.copyWith(date: value, status: TaskFormStatus.initial));
+  void updateHeureDebut(TimeOfDay value) => emit(state.copyWith(heureDebut: value, status: TaskFormStatus.initial));
+  void updateHeureFin(TimeOfDay value) => emit(state.copyWith(heureFin: value, status: TaskFormStatus.initial));
+  void updateNote(String value) => emit(state.copyWith(note: value, status: TaskFormStatus.initial));
+
+  Future<void> submit() async {
+    if (state.employeId == null || state.appartementId == null || state.date == null) {
+      emit(state.copyWith(status: TaskFormStatus.failure, errorMessage: 'Veuillez remplir tous les champs obligatoires'));
+      return;
     }
-  }
-  Future<void> _loadApp() async {
+
+    emit(state.copyWith(status: TaskFormStatus.loading));
+
     try {
-      final list =    await BuildingRepository().getRommByBuilding(
-        Utils.idBuilding ?? "",
-      ) ??
-          [];
-
-      appartement.updateItems(list);
-      emitLoaded();
-    } catch (e) {
-      emitFailure(failureResponse: "Erreur chargement utilisateur");
-    }
-  }
-  @override
-  void onSubmitting() async {
-    try {
-      print("submiiitttiing 1");
-
-      final employeId = employe.value?.id;
-      final appartementId = appartement.value?.id;
-
-      final selectedDate = date.value!;
-
-      final startTime = heureDebut.value!;
-      final endTime = heureFin.value!;
+      final selectedDate = state.date!;
 
       final dateDebut = DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        startTime.hour,
-        startTime.minute,
+        selectedDate.year, selectedDate.month, selectedDate.day,
+        state.heureDebut.hour, state.heureDebut.minute,
       );
 
       final dateFin = DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        endTime.hour,
-        endTime.minute,
+        selectedDate.year, selectedDate.month, selectedDate.day,
+        state.heureFin.hour, state.heureFin.minute,
       );
 
-      print("submiiitttiing 2");
-      emitLoading();
-
-     var res =  await BuildingRepository().addTache( cleaner_id : employeId,
-         building_id: Utils.idBuilding ?? "",
-         room_id: appartementId,
-          start_date: dateDebut.toString(),
-
-    end_date: dateFin.toString(),
-   );
-
-     if(res != null)
-      emitSuccess(
-        canSubmitAgain: true,
-        successResponse: 'Planning assigné avec succès !',
+      var res = await BuildingRepository().addTache(
+        cleaner_id: state.employeId,
+        building_id: Utils.idBuilding ?? "",
+        room_id: state.appartementId,
+        start_date: dateDebut.toIso8601String(),
+        end_date: dateFin.toIso8601String(),
       );
-     else
-       emitFailure(failureResponse:  "Erreur lors de la création api");
 
-
+      if (res != null) {
+        emit(state.copyWith(status: TaskFormStatus.success));
+      } else {
+        emit(state.copyWith(status: TaskFormStatus.failure, errorMessage: "Erreur API lors de la création"));
+      }
     } catch (e) {
-
-      print("eexeceptionnn $e");
-      emitFailure(failureResponse:  "Erreur lors de la création");
+      emit(state.copyWith(status: TaskFormStatus.failure, errorMessage: "Erreur: $e"));
     }
-
-
   }
 }
